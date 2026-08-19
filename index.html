@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSB Teacher PRO — Teacher व Student के लिए Digital School Management System</title>
+<meta name="description" content="PSB Teacher PRO से School Teachers Paper, Notes, Mark Sheet और Test Result मोबाइल से बना, Print और Save कर सकते हैं। Students अपना Result और Class Scoreboard कभी भी देख सकते हैं।">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Hind:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:#16233F;
+    --ink-2:#223257;
+    --paper:#FBFAF6;
+    --paper-line:#E4DFCF;
+    --red:#C1272D;
+    --red-dark:#9E1F24;
+    --gold:#D9A441;
+    --slate:#4B5A78;
+    --slate-light:#7A88A3;
+    --white:#FFFFFF;
+    --radius:14px;
+    --font-display:'Baloo 2', sans-serif;
+    --font-body:'Hind', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+    --shadow:0 18px 40px -18px rgba(22,35,63,0.35);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:var(--font-body);
+    color:var(--slate);
+    background:var(--paper);
+    line-height:1.6;
+  }
+  h1,h2,h3,.brand{font-family:var(--font-display);color:var(--ink);}
+  img,svg{max-width:100%;display:block;}
+  a{color:inherit;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;}
+  .eyebrow{
+    font-family:var(--font-body);
+    font-size:13px;
+    color:var(--red);
+    font-weight:700;
+    margin:0 0 10px;
+  }
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--font-body);font-weight:700;font-size:15px;
+    padding:13px 26px;border-radius:999px;text-decoration:none;
+    border:2px solid transparent;cursor:pointer;transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn-red{background:var(--red);color:#fff;box-shadow:0 10px 24px -10px rgba(193,39,45,0.7);}
+  .btn-red:hover{background:var(--red-dark);}
+  .btn-outline{background:transparent;color:#fff;border-color:rgba(255,255,255,0.55);}
+  .btn-outline:hover{border-color:#fff;background:rgba(255,255,255,0.08);}
+  .btn-ink{background:var(--ink);color:#fff;}
+  .btn-ink:hover{background:var(--ink-2);}
+
+  /* ---------- NAV ---------- */
+  header.nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(22,35,63,0.96);backdrop-filter:blur(6px);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:1120px;margin:0 auto;}
+  .brand{color:#fff;font-size:20px;font-weight:700;text-decoration:none;display:flex;align-items:baseline;gap:4px;}
+  .brand span{color:var(--gold);}
+  .nav-links{display:flex;align-items:center;gap:28px;}
+  .nav-links a{color:#D9DEEA;text-decoration:none;font-size:15px;font-weight:500;}
+  .nav-links a:hover{color:#fff;}
+  .nav-cta{display:none;}
+  .hamburger{display:none;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;}
+  @media (max-width:760px){
+    .nav-links{
+      position:absolute;top:100%;left:0;right:0;background:var(--ink);
+      flex-direction:column;align-items:flex-start;gap:0;padding:8px 24px 18px;
+      display:none;
+    }
+    .nav-links.open{display:flex;}
+    .nav-links a{padding:10px 0;width:100%;border-bottom:1px solid rgba(255,255,255,0.08);}
+    .hamburger{display:block;}
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{background:linear-gradient(180deg,var(--ink) 0%, var(--ink-2) 100%);color:#fff;position:relative;overflow:hidden;}
+  .hero-inner{
+    max-width:1120px;margin:0 auto;padding:64px 24px 90px;
+    display:grid;grid-template-columns:1.1fr 0.9fr;gap:48px;align-items:center;
+  }
+  .hero h1{font-size:clamp(28px,4.4vw,44px);line-height:1.18;margin:0 0 18px;color:#fff;font-weight:700;}
+  .hero p.lead{font-size:17px;color:#C9D2E5;max-width:46ch;margin:0 0 30px;}
+  .hero-ctas{display:flex;flex-wrap:wrap;gap:14px;}
+
+  /* stamped marksheet visual */
+  .stamp-card{
+    background:var(--paper);color:var(--ink);border-radius:10px;
+    padding:22px 22px 54px;transform:rotate(-4deg);
+    box-shadow:var(--shadow);position:relative;
+    background-image:repeating-linear-gradient(#FBFAF6 0 27px, var(--paper-line) 27px 28px);
+    font-family:var(--font-mono);
+  }
+  .stamp-card .sc-head{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;display:flex;justify-content:space-between;}
+  .stamp-card .sc-row{display:flex;justify-content:space-between;font-size:12px;color:var(--slate);padding:4px 0;}
+  .stamp-card .sc-row b{color:var(--ink);}
+  .stamp-mark{
+    position:absolute;right:16px;bottom:-24px;
+    width:82px;height:82px;border-radius:50%;
+    border:3px solid var(--red);color:var(--red);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-weight:800;font-size:14px;
+    transform:rotate(14deg);letter-spacing:.05em;
+    background:rgba(251,250,246,0.96);
+  }
+  @media (max-width:860px){
+    .hero-inner{grid-template-columns:1fr;padding-top:44px;}
+    .stamp-card{max-width:320px;margin:0 auto;}
+  }
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:76px 0;}
+  section h2{font-size:clamp(24px,3.2vw,34px);margin:0 0 16px;}
+  .section-head{max-width:640px;margin-bottom:48px;}
+  .section-head p{color:var(--slate);font-size:16px;margin:0;}
+
+  /* services */
+  .cards-2{display:grid;grid-template-columns:1fr 1fr;gap:28px;}
+  @media (max-width:760px){.cards-2{grid-template-columns:1fr;}}
+  .page-card{
+    background:var(--white);border:1px solid var(--paper-line);border-radius:var(--radius);
+    padding:32px 28px;
+    background-image:repeating-linear-gradient(#FFFFFF 0 30px, #EFEBDD 30px 31px);
+  }
+  .page-card .pc-icon{font-size:30px;margin-bottom:14px;}
+  .page-card h3{font-size:21px;margin:0 0 4px;}
+  .page-card .pc-desc{color:var(--slate-light);font-size:14px;margin:0 0 18px;}
+  .page-card ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
+  .page-card li{font-size:14.5px;color:var(--slate);display:flex;gap:10px;align-items:flex-start;}
+
+  /* pricing */
+  .pricing-band{background:var(--ink);}
+  .pricing-band .eyebrow{color:var(--gold);}
+  .pricing-band h2, .pricing-band .section-head p{color:#fff;}
+  .pricing-band .section-head p{color:#B9C2D8;}
+  .price-cards{display:grid;grid-template-columns:1fr 1fr;gap:26px;}
+  @media (max-width:760px){.price-cards{grid-template-columns:1fr;}}
+  .price-card{
+    background:var(--paper);border-radius:var(--radius);padding:30px 26px;position:relative;color:var(--ink);
+  }
+  .price-card .pt{font-family:var(--font-display);font-size:20px;font-weight:700;margin:0 0 2px;}
+  .price-card .ps{font-size:13px;color:var(--slate-light);margin:0 0 18px;}
+  .price-card .amount{font-family:var(--font-display);font-size:30px;font-weight:800;color:var(--ink);margin-bottom:18px;}
+  .price-card .amount small{font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--slate-light);}
+  .price-card ul{list-style:none;margin:0 0 22px;padding:0;display:flex;flex-direction:column;gap:10px;}
+  .price-card li{font-size:14px;display:flex;gap:8px;}
+  .price-card li.no{color:var(--slate-light);}
+  .sticker{
+    position:absolute;top:-14px;right:18px;background:var(--gold);color:var(--ink);
+    font-family:var(--font-display);font-weight:800;font-size:12px;
+    padding:8px 14px;border-radius:999px;transform:rotate(6deg);
+    box-shadow:0 8px 18px -6px rgba(217,164,65,0.7);
+  }
+  .price-note{font-size:12.5px;color:#93A0BC;text-align:center;margin-top:22px;}
+
+  /* contact */
+  .contact-band{background:var(--paper);}
+  .contact-inner{
+    background:var(--white);border:1px solid var(--paper-line);border-radius:var(--radius);
+    padding:44px 34px;text-align:center;
+  }
+  .contact-inner h2{margin-bottom:8px;}
+  .contact-inner p{max-width:52ch;margin:0 auto 26px;}
+  .contact-btns{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;}
+
+  /* footer */
+  footer{background:var(--ink);color:#B9C2D8;padding:34px 0;}
+  .footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;font-size:13px;}
+  .footer-inner a{text-decoration:none;color:#D9DEEA;}
+  .footer-links{display:flex;gap:18px;}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    .btn{transition:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">PSB Teacher <span>PRO</span></a>
+    <nav class="nav-links" id="navLinks">
+      <a href="#top">होम</a>
+      <a href="#services">सेवाएं</a>
+      <a href="#pricing">Plans</a>
+      <a href="#contact">संपर्क</a>
+      <a href="teacher-app.html" class="btn btn-red" style="margin-top:8px;">Teacher Login</a>
+    </nav>
+    <button class="hamburger" id="hamburgerBtn" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <div class="hero-inner">
+    <div>
+      <p class="eyebrow">स्कूल टीचर्स के लिए</p>
+      <h1>पेपर, नोट्स और मार्कशीट — मोबाइल से चंद मिनट में तैयार</h1>
+      <p class="lead">PSB Teacher PRO एक पूरा Digital System है जो School Teachers को Question Paper, Notes, Mark Sheet और Test Result बनाने, Print करने और Save रखने में मदद करता है — बिना Computer या Internet Café गए, सीधे मोबाइल से।</p>
+      <div class="hero-ctas">
+        <a href="teacher-app.html" class="btn btn-red">Teacher Login →</a>
+        <a href="student-app.html" class="btn btn-outline">Student अपना Result देखें</a>
+      </div>
+    </div>
+    <div class="stamp-card">
+      <div class="sc-head">मार्कशीट <span style="color:#7A88A3;font-size:11px;">SAMPLE</span></div>
+      <div class="sc-row"><span>रोल नंबर</span><b>07</b></div>
+      <div class="sc-row"><span>नाम</span><b>राहुल कुमार</b></div>
+      <div class="sc-row"><span>कक्षा</span><b>10वीं — B</b></div>
+      <div class="sc-row"><span>कुल अंक</span><b>486 / 500</b></div>
+      <div class="sc-row"><span>परिणाम</span><b>PASS</b></div>
+      <div class="stamp-mark">PASS ✓</div>
+    </div>
+  </div>
+</section>
+
+<section id="services">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">हमारी सेवाएं</p>
+      <h2>एक Login, स्कूल का सारा काम</h2>
+      <p>Teachers और Students, दोनों के लिए अलग-अलग बना हुआ System — हर किसी को वही मिलता है जिसकी उसे ज़रूरत है।</p>
+    </div>
+    <div class="cards-2">
+      <div class="page-card">
+        <div class="pc-icon">📘</div>
+        <h3>Teacher App</h3>
+        <p class="pc-desc">रोज़ के कागज़-कलम वाले काम को डिजिटल में बदलें</p>
+        <ul>
+          <li>✍️ Rich Text Editor से Paper बनाएं — Bold, Color, Size, तस्वीरें और गणितीय फॉर्मूला (LaTeX) तक शामिल</li>
+          <li>🗒️ अलग से Notes बनाएं और सुरक्षित Save रखें</li>
+          <li>📊 Mark Sheet — विषय जोड़ें, अंक भरें, Total अपने-आप बन जाए</li>
+          <li>📝 Test Result — पहले Session में Save करें, तैयार होने पर Publish करें</li>
+          <li>📁 Papers, Notes, Mark Sheets और Results की पूरी History एक जगह</li>
+          <li>🖨️ सीधा Print करें, या तुरंत Share करें</li>
+        </ul>
+      </div>
+      <div class="page-card">
+        <div class="pc-icon">🎓</div>
+        <h3>Student App</h3>
+        <p class="pc-desc">Students खुद अपना Result घर बैठे देख सकते हैं</p>
+        <ul>
+          <li>🔎 Registration Number और Class डालकर पूरी Class का Scoreboard देखें</li>
+          <li>🎯 Roll Number और Class डालकर अपना व्यक्तिगत Result देखें</li>
+          <li>📱 कहीं से भी, किसी भी डिवाइस से Result चेक करें</li>
+          <li>🔒 सिर्फ Teacher द्वारा Publish किया गया Result ही दिखता है</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing-band" id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Plans</p>
+      <h2>ज़रूरत के हिसाब से Plan चुनें</h2>
+      <p>छोटे इस्तेमाल के लिए Free Plan काफ़ी है — रोज़ाना, बिना रुकावट काम के लिए Premium लें।</p>
+    </div>
+    <div class="price-cards">
+      <div class="price-card">
+        <p class="pt">Free</p>
+        <p class="ps">शुरुआत करने के लिए</p>
+        <p class="amount">₹0</p>
+        <ul>
+          <li>✅ शुरुआती मुफ़्त Prints</li>
+          <li>✅ Papers, Notes, Mark Sheet — सभी Features उपलब्ध</li>
+          <li class="no">✕ Print पर Watermark आएगा</li>
+          <li class="no">✕ Ads के साथ अनुभव</li>
+        </ul>
+        <a href="teacher-app.html" class="btn btn-ink" style="width:100%;justify-content:center;">मुफ़्त शुरू करें</a>
+      </div>
+      <div class="price-card">
+        <span class="sticker">⭐ पसंदीदा</span>
+        <p class="pt">Premium</p>
+        <p class="ps">बिना रुकावट रोज़ के काम के लिए</p>
+        <p class="amount">देखें ऐप में <small>*</small></p>
+        <ul>
+          <li>✅ Unlimited Papers, Notes, Mark Sheet, Result Print</li>
+          <li>✅ बिना Watermark के Print/Share</li>
+          <li>✅ बिना Ads का अनुभव</li>
+          <li>✅ दोस्तों को Refer कर, Premium मुफ़्त पाएं</li>
+        </ul>
+        <a href="teacher-app.html" class="btn btn-red" style="width:100%;justify-content:center;">Premium देखें</a>
+      </div>
+    </div>
+    <p class="price-note">*सटीक कीमत व अवधि, Login के बाद ऐप के अंदर "Upgrade" Screen में देखें — ज़रूरत के हिसाब से कई Plan उपलब्ध हैं।</p>
+  </div>
+</section>
+
+<section class="contact-band" id="contact">
+  <div class="wrap">
+    <div class="contact-inner">
+      <h2>सवाल है? हमसे जुड़ें</h2>
+      <p>App इस्तेमाल करने में कोई दिक्कत हो, Plan के बारे में जानना हो, या कोई सुझाव देना हो — हमें बताएं। हम Hindi और English दोनों में मदद कर सकते हैं।</p>
+      <div class="contact-btns">
+        <a href="mailto:singhvishvanath69@gmail.com" class="btn btn-ink">✉️ singhvishvanath69@gmail.com</a>
+        <a href="https://wa.me/917566062677" class="btn btn-red">💬 WhatsApp पर लिखें</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-inner">
+    <span>© <span id="yr"></span> PSB Teacher PRO · psbcompany.in</span>
+    <div class="footer-links">
+      <a href="privacy-policy.html">गोपनीयता नीति</a>
+      <a href="terms.html">नियम व शर्तें</a>
+      <a href="refund-policy.html">रिफंड नीति</a>
+      <a href="contact.html">संपर्क करें</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById("yr").textContent = new Date().getFullYear();
+  const hamburgerBtn = document.getElementById("hamburgerBtn");
+  const navLinks = document.getElementById("navLinks");
+  hamburgerBtn.addEventListener("click", () => navLinks.classList.toggle("open"));
+  navLinks.querySelectorAll("a").forEach(a => a.addEventListener("click", () => navLinks.classList.remove("open")));
+</script>
+
+</body>
+</html>

@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSB Student - Result Portal</title>
+<!-- [फिक्स] असली PDF बनाकर Share करने के लिए (पहले सिर्फ Print होता था, Share नहीं था) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- ⚠️ ज़रूरी: नीचे RECAPTCHA_SITE_KEY की जगह अपनी असली reCAPTCHA v2 Site Key डालें -->
+<script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
+<style>
+  :root{
+    --primary:#1e6b4d; --primary-dark:#144d38; --accent:#ff8c00;
+    --bg:#f2f8f5; --card:#ffffff; --border:#d3e6dc;
+    --danger:#d9364a; --success:#1e8e5a; --text:#1b2430;
+  }
+  /* Dark Theme — Teacher App जैसा ही तरीका (CSS Variables बदल कर पूरी App Dark हो जाती है) */
+  html[data-theme="dark"]{
+    --primary:#4dbf8f; --primary-dark:#3a9c72; --accent:#ffab4d;
+    --bg:#0f1a15; --card:#182620; --border:#2b3f35;
+    --danger:#ff6b7a; --success:#4dd499; --text:#e8f5ee;
+  }
+  html[data-theme="dark"] body{background:var(--bg);color:var(--text);}
+  html[data-theme="dark"] input[type=text]{background:#0f1a15;color:var(--text);border-color:var(--border);}
+  html[data-theme="dark"] .print-sheet{background:#fff;color:#1b2430;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(180deg,#eaf6f0,#f2f8f5 220px);color:var(--text);}
+
+  .topbar{
+    background:linear-gradient(120deg,var(--primary),var(--primary-dark) 70%);
+    color:#fff;padding:34px 20px 30px;text-align:center;
+    box-shadow:0 4px 18px rgba(20,77,56,.25);
+    position:relative;overflow:hidden;
+  }
+  .topbar::before{
+    content:"";position:absolute;top:-60px;right:-60px;width:200px;height:200px;
+    background:rgba(255,255,255,.08);border-radius:50%;
+  }
+  .topbar::after{
+    content:"";position:absolute;bottom:-70px;left:-40px;width:180px;height:180px;
+    background:rgba(255,255,255,.06);border-radius:50%;
+  }
+  .topbar h1{
+    margin:0;font-size:34px;font-weight:800;letter-spacing:.5px;
+    text-shadow:0 2px 10px rgba(0,0,0,.15);
+  }
+  .topbar h1 span{color:var(--accent);}
+  .topbar p{margin:8px 0 0;font-size:14px;opacity:.95;}
+
+  .wrap{max-width:700px;margin:-22px auto 24px;padding:0 16px;position:relative;z-index:2;}
+
+  .tabs{display:flex;gap:8px;background:var(--card);border-radius:14px;padding:6px;box-shadow:0 6px 18px rgba(30,77,140,.1);margin-bottom:16px;}
+  .tab-btn{flex:1;text-align:center;padding:12px 8px;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;color:var(--primary-dark);transition:.15s;user-select:none;}
+  .tab-btn.active{background:linear-gradient(120deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 4px 10px rgba(20,77,56,.3);}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:16px;box-shadow:0 4px 14px rgba(0,0,0,.05);}
+  .card h3{margin:0 0 14px;color:var(--primary-dark);font-size:17px;border-bottom:2px solid var(--border);padding-bottom:8px;}
+  label{display:block;font-size:13px;font-weight:700;margin:10px 0 4px;color:#3a4658;}
+  input[type=text]{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fbfcfe;}
+  input[type=text]:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,107,77,.12);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .row > *{flex:1;min-width:140px;}
+  .btn{cursor:pointer;border:none;border-radius:10px;padding:13px 18px;font-size:15px;font-weight:700;transition:.15s;}
+  .btn-primary{background:linear-gradient(120deg,var(--primary),var(--primary-dark));color:#fff;width:100%;margin-top:18px;box-shadow:0 4px 12px rgba(20,77,56,.25);}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(20,77,56,.3);}
+  .btn-accent{background:var(--accent);color:#fff;}
+  .btn-outline{background:#fff;color:var(--primary);border:1px solid var(--primary);}
+  .btn-sm{padding:8px 12px;font-size:13px;border-radius:8px;}
+  .msg{padding:12px 16px;border-radius:10px;font-size:13px;margin:12px 0;}
+  .msg-error{background:#fde8ea;color:var(--danger);border:1px solid #f7c3ca;text-align:center;}
+  .msg-info{background:#eaf1fb;color:#1e4d8c;border:1px solid #cfdff5;text-align:center;}
+  .hidden{display:none !important;}
+  .footer-actions{display:flex;justify-content:center;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .result-instruction-banner{
+    background:#eaf6f0;border:1px solid var(--border);color:var(--primary-dark);
+    font-size:13px;font-weight:600;text-align:center;padding:10px 14px;
+    border-radius:10px;margin-bottom:14px;
+  }
+  .notice-card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
+  .notice-card h4{margin:0 0 6px;color:var(--primary-dark);font-size:15px;}
+  .notice-card p{margin:0 0 8px;font-size:13.5px;color:#444;}
+  .notice-card .notice-date{font-size:11px;color:#8892a0;}
+  #legalFooterBar{text-align:center;padding:16px 10px;font-size:12px;color:#7c8896;border-top:1px solid var(--border);margin-top:24px;}
+  #legalFooterBar a{margin:0 4px;color:#3a6650;text-decoration:none;}
+  @media print{ #legalFooterBar{display:none !important;} }
+
+  table.list-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;}
+  table.list-table th,table.list-table td{border:1px solid var(--border);padding:8px;text-align:left;}
+  table.list-table th{background:#eaf6f0;color:var(--primary-dark);}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+  .badge-pass{background:#e6f6ee;color:var(--success);}
+  .badge-fail{background:#fde8ea;color:var(--danger);}
+
+  .print-sheet{max-width:800px;margin:0 auto 20px;padding:24px;border:2px solid #333;font-family:'Times New Roman',serif;page-break-after:always;}
+  .print-sheet:last-child{page-break-after:auto;}
+  .print-sheet h2{text-align:center;margin:0 0 4px;color:#1e6b4d;}
+  .print-sheet .sub{text-align:center;font-size:13px;margin-bottom:14px;color:#555;}
+  .print-sheet table{width:100%;border-collapse:collapse;margin-top:10px;}
+  .print-sheet table td,.print-sheet table th{border:1px solid #333;padding:6px 8px;font-size:14px;}
+  .print-details{display:flex;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px;font-size:14px;}
+  .print-details div{width:48%;padding:2px 0;}
+  .print-header-band{border-bottom:1px solid #999;margin-bottom:10px;padding-bottom:8px;font-size:12px;color:#444;display:flex;justify-content:space-between;flex-wrap:wrap;}
+  .print-footer-band{border-top:1px solid #999;margin-top:24px;padding-top:8px;font-size:11px;color:#555;}
+  .result-badge{font-weight:bold;font-size:18px;text-align:center;margin-top:14px;padding:8px;border-radius:6px;}
+  .result-pass{background:#e6f6ee;color:var(--success);}
+  .result-fail{background:#fde8ea;color:var(--danger);}
+  .sign-row{display:flex;justify-content:space-between;margin-top:50px;font-size:13px;}
+  #printArea{display:none;}
+  @media print{
+    /* [फिक्स] सिर्फ visibility:hidden से Ad Script और एक्स्ट्रा खाली पेज दोनों समस्या आ रही थी —
+       अब body के हर बच्चे को #printArea के अलावा display:none कर देते हैं, जिससे न कोई Ad
+       दिख सकता है (चाहे वो जबरन visibility:visible सेट करे) और न पेज की ऊँचाई बढ़कर एक्स्ट्रा
+       खाली पेज बनते हैं। */
+    body > *:not(#printArea){display:none !important;}
+    #printArea{display:block !important;}
+    #printArea, #printArea *{visibility:visible;}
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
+    @page{ margin:10mm; }
+  }
+  .print-sheet{position:relative;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .print-watermark{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);
+    font-size:46px;font-weight:800;color:rgba(30,107,77,0.16);white-space:nowrap;pointer-events:none;
+    z-index:0;user-select:none;letter-spacing:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .print-sheet > *:not(.print-watermark){position:relative;z-index:1;}
+
+  .app-blocked-wrap{max-width:480px;margin:60px auto;text-align:center;padding:0 16px;}
+  .app-blocked-wrap .icon{font-size:54px;}
+
+  /* ==================================================================
+     Ad Placement System (Adsterra) — Teacher App जैसा ही सिस्टम यहां भी।
+     .psb-ad-slot: हर जगह लगे विज्ञापन का सामान्य कंटेनर।
+     ================================================================== */
+  .psb-ad-slot{margin:14px 0;text-align:center;}
+  .psb-ad-slot-infeed{border:1px dashed var(--border);border-radius:8px;padding:10px;background:#fafbfc;}
+  .psb-ad-label{font-size:11px;color:#8892a0;margin-top:4px;}
+  /* Sticky Bottom Banner — नीचे चिपका रहेगा (Global Footer Ad) */
+  #stickyAdBar{
+    position:fixed;left:0;right:0;bottom:0;z-index:500;
+    background:#fff;border-top:1px solid var(--border);
+    padding:4px 8px 2px;margin:0;
+    box-shadow:0 -2px 8px rgba(0,0,0,0.08);
+  }
+  /* Sticky Bar (728x90) के नीचे छुप जाने से बचाने के लिए पेज में जगह छोड़ी */
+  body{padding-bottom:100px;}
+</style>
+</head>
+<body>
+<script>
+  (function(){
+    try{
+      const saved = localStorage.getItem("psb_theme");
+      if(saved === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    }catch(e){}
+  })();
+</script>
+
+<div class="topbar">
+  <h1><a href="index.html" style="color:inherit;text-decoration:none;">🏆 <span>PSB</span> Student</a></h1>
+  <p>अपना Result देखने के लिए नीचे सही जानकारी भरें</p>
+  <button class="btn btn-outline btn-sm" id="themeToggleBtn" onclick="toggleTheme()" style="position:absolute;top:16px;right:16px;" title="Dark/Light Theme">🌙</button>
+</div>
+
+<div class="wrap hidden" id="blockedWrap">
+  <div class="card app-blocked-wrap">
+    <div class="icon">🚫</div>
+    <h2 style="color:var(--danger);">यह ऐप अभी बंद है</h2>
+    <p style="color:#666;">Admin ने PSB Student App को अभी के लिए बंद कर दिया है। कृपया कुछ समय बाद पुनः कोशिश करें।</p>
+  </div>
+</div>
+
+<div class="wrap" id="authWrap">
+  <div class="card" id="loginCard">
+    <h3>🔐 Login करें</h3>
+    <p style="font-size:13px;color:#3a4658;margin:0 0 14px;">Result देखने के लिए पहले Google से Login करें</p>
+    <button class="btn btn-primary" id="googleLoginBtn">🔵 Google से Login करें</button>
+    <div id="authMsg"></div>
+    <div id="adSlotLogin" class="psb-ad-slot psb-ad-slot-infeed"></div>
+  </div>
+  <div class="card hidden" id="userCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:13px;color:#3a4658;">✅ लॉगिन: <b id="userEmailText"></b></div>
+      <button class="btn btn-outline btn-sm" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap hidden" id="mainWrap">
+
+  <div class="result-instruction-banner">📋 नीचे दी गई जानकारी भरें और अपना Result देखें</div>
+
+  <div id="adSlotResultTop" class="psb-ad-slot psb-ad-slot-infeed"></div>
+
+  <div class="tabs">
+    <div class="tab-btn active" id="tabTest" onclick="switchTab('test')">🧮 Test रिजल्ट चेक</div>
+    <div class="tab-btn" id="tabPaper" onclick="switchTab('paper')">📝 Mark Sheet / Paper रिजल्ट चेक</div>
+    <div class="tab-btn" id="tabNotices" onclick="switchTab('notices')">📢 सूचना <span id="studentNoticesCountBadge" class="hidden"></span></div>
+  </div>
+
+  <div id="adSlotSmartLink" class="psb-ad-slot psb-ad-slot-infeed"></div>
+
+  <!-- ================= IMPORTANT NOTICES ================= -->
+  <div id="panelNotices" class="hidden">
+    <div class="card">
+      <h3>📢 महत्वपूर्ण सूचना</h3>
+      <div id="studentNoticesListWrap"></div>
+    </div>
+  </div>
+
+  <!-- ================= TEST RESULT CHECK ================= -->
+  <div id="panelTest">
+    <div class="card">
+      <h3>🧮 Test Result देखें</h3>
+      <div class="row">
+        <div><label>Teacher Registration Number</label><input type="text" id="trqRegNo" placeholder="जैसे: TCH123456"></div>
+      </div>
+      <div class="row">
+        <div><label>Class</label><input type="text" id="trqClass"></div>
+        <div><label>Section</label><input type="text" id="trqSection"></div>
+      </div>
+      <div id="testResultRecaptcha" style="margin:12px 0;display:flex;justify-content:center;"></div>
+      <button class="btn btn-primary" onclick="searchTestResults()">🔍 Result देखें</button>
+      <div id="trqMsg"></div>
+    </div>
+
+    <div class="card hidden" id="trqResultCard">
+      <h3>📋 Result List</h3>
+      <div id="trqResultWrap"></div>
+      <div id="adSlotTestResultBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+    </div>
+  </div>
+
+  <!-- ================= MARKSHEET / PAPER RESULT CHECK ================= -->
+  <div id="panelPaper" class="hidden">
+    <div class="card">
+      <h3>📝 Mark Sheet Result देखें</h3>
+      <div class="row">
+        <div><label>Teacher Registration Number</label><input type="text" id="rcRegNo" placeholder="जैसे: TCH123456"></div>
+      </div>
+      <div class="row">
+        <div><label>Roll No.</label><input type="text" id="rcRollNo"></div>
+        <div><label>Class</label><input type="text" id="rcClass"></div>
+      </div>
+      <div id="marksheetRecaptcha" style="margin:12px 0;display:flex;justify-content:center;"></div>
+      <button class="btn btn-primary" onclick="searchMarksheet()">🔍 Result देखें</button>
+      <div id="rcMsg"></div>
+    </div>
+
+    <div class="card hidden" id="rcResultCard">
+      <div id="rcResultContent"></div>
+      <div id="adSlotMarksheetResultBottom" class="psb-ad-slot psb-ad-slot-infeed"></div>
+      <div class="footer-actions">
+        <button class="btn btn-accent" onclick="printMarksheetResult()">🖨 Print Result</button>
+        <button class="btn btn-outline" onclick="shareMarksheetResult()">📤 Share PDF</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<!-- /mainWrap -->
+
+<div id="printArea"></div>
+
+<footer id="legalFooterBar">
+  <a href="index.html">🏠 Home</a> |
+  <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a> |
+  <a href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a> |
+  <a href="refund-policy.html" target="_blank" rel="noopener">Refund Policy</a> |
+  <a href="contact.html" target="_blank" rel="noopener">Contact Us</a>
+  <div style="margin-top:4px;">© 2026 PSB Teacher PRO. All rights reserved.</div>
+</footer>
+
+<div id="stickyAdBar" class="psb-ad-slot hidden"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, query, where, getDocs, doc, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAVccywI4eCzbc1eg6cy2qZaEeYUx0qi2w",
+  authDomain: "chatting-app-2047e.firebaseapp.com",
+  projectId: "chatting-app-2047e",
+  storageBucket: "chatting-app-2047e.firebasestorage.app",
+  messagingSenderId: "641783644815",
+  appId: "1:641783644815:web:9a392923b2213f432ca6fa"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+/* =====================================================================
+   reCAPTCHA v2 — Result Search फॉर्म को Bot/Scraping से बचाने के लिए
+   ⚠️ ज़रूरी: नीचे RECAPTCHA_SITE_KEY की जगह अपनी असली Site Key डालें
+   ===================================================================== */
+const RECAPTCHA_SITE_KEY = "YOUR_RECAPTCHA_SITE_KEY_HERE";
+let testResultRecaptchaWidgetId = null;
+let marksheetRecaptchaWidgetId = null;
+
+window.onRecaptchaLoad = function(){
+  if(typeof grecaptcha === "undefined" || !grecaptcha.render){
+    setTimeout(window.onRecaptchaLoad, 200);
+    return;
+  }
+  if(document.getElementById("testResultRecaptcha") && testResultRecaptchaWidgetId === null){
+    testResultRecaptchaWidgetId = grecaptcha.render("testResultRecaptcha", { sitekey: RECAPTCHA_SITE_KEY });
+  }
+  if(document.getElementById("marksheetRecaptcha") && marksheetRecaptchaWidgetId === null){
+    marksheetRecaptchaWidgetId = grecaptcha.render("marksheetRecaptcha", { sitekey: RECAPTCHA_SITE_KEY });
+  }
+};
+window.onRecaptchaLoad();
+
+function verifyRecaptcha(widgetId){
+  if(RECAPTCHA_SITE_KEY === "YOUR_RECAPTCHA_SITE_KEY_HERE") return true;
+  if(typeof grecaptcha === "undefined" || widgetId === null) return false;
+  return !!grecaptcha.getResponse(widgetId);
+}
+function resetRecaptcha(widgetId){
+  if(typeof grecaptcha !== "undefined" && widgetId !== null){
+    try{ grecaptcha.reset(widgetId); }catch(e){}
+  }
+}
+
+/* ===================== DARK / LIGHT THEME TOGGLE ===================== */
+window.toggleTheme = function(){
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  if(isDark){
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.setItem("psb_theme", "light");
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+    localStorage.setItem("psb_theme", "dark");
+  }
+  updateThemeToggleIcon();
+};
+function updateThemeToggleIcon(){
+  const btn = document.getElementById("themeToggleBtn");
+  if(!btn) return;
+  btn.textContent = document.documentElement.getAttribute("data-theme") === "dark" ? "☀️" : "🌙";
+}
+updateThemeToggleIcon();
+
+/* ===================== GOOGLE LOGIN ===================== */
+const loginCard = document.getElementById("loginCard");
+const userCard = document.getElementById("userCard");
+const mainWrap = document.getElementById("mainWrap");
+const authMsg = document.getElementById("authMsg");
+const userEmailText = document.getElementById("userEmailText");
+
+document.getElementById("googleLoginBtn").addEventListener("click", async () => {
+  authMsg.innerHTML = "";
+  try{
+    await signInWithPopup(auth, googleProvider);
+  }catch(err){
+    authMsg.innerHTML = '<div class="msg msg-error">Login Error: ' + err.message + '</div>';
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  try{
+    await signOut(auth);
+  }catch(err){
+    authMsg.innerHTML = '<div class="msg msg-error">Logout Error: ' + err.message + '</div>';
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user || null;
+  refreshVisibility();
+});
+
+/* ---------------------------------------------------------------------
+   ADMIN-CONTROLLED APP SETTINGS (live sync)
+   Doc: appSettings/global — written by AdminApp, read here in realtime.
+   --------------------------------------------------------------------- */
+let currentUser = null;
+let studentAppEnabled = true;
+
+function refreshVisibility(){
+  const blockedWrap = document.getElementById("blockedWrap");
+  if(!studentAppEnabled){
+    blockedWrap.classList.remove("hidden");
+    loginCard.classList.add("hidden");
+    userCard.classList.add("hidden");
+    mainWrap.classList.add("hidden");
+    return;
+  }
+  blockedWrap.classList.add("hidden");
+  if(currentUser){
+    loginCard.classList.add("hidden");
+    userCard.classList.remove("hidden");
+    mainWrap.classList.remove("hidden");
+    userEmailText.textContent = currentUser.email || currentUser.displayName || "User";
+  } else {
+    loginCard.classList.remove("hidden");
+    userCard.classList.add("hidden");
+    mainWrap.classList.add("hidden");
+  }
+  refreshAdVisibility();
+}
+
+onSnapshot(doc(db, "appSettings", "global"), (snap) => {
+  const data = snap.exists() ? snap.data() : {};
+  studentAppEnabled = data.studentAppEnabled !== false;
+  refreshVisibility();
+}, (err) => { console.warn("appSettings sync error:", err.message); });
+
+/* ---------------------------------------------------------------------
+   Ad Placement System (Adsterra) — Teacher App में लगे वही Ad Codes यहां भी
+   (एक ही Domain के अलग-अलग पन्नों पर एक जैसे Zone Code दोहराए जा सकते हैं)
+   --------------------------------------------------------------------- */
+// 1) Popunder / Interstitial (Zone ID: 30574824)
+const ADSTERRA_POPUNDER_SCRIPT_HTML = `<script src="https://consciousdunkvastly.com/c1/8e/b5/c18eb58411cc2cb5aa20c24d51747c15.js"><\/script>`;
+// 2) Native/In-content Banner (Zone ID: 30574825) — Result Top पर (सबसे ज्यादा engagement वाली जगह)
+const ADSTERRA_NATIVE_AD_HTML = `<script async="async" data-cfasync="false" src="https://consciousdunkvastly.com/babe92e8cd8bafd36ff10bec1b1eef45/invoke.js"><\/script>
+<div id="container-babe92e8cd8bafd36ff10bec1b1eef45"></div>`;
+// 3) Banner 320x50 (Zone ID: 30574826) — Login व Result Bottom स्लॉट्स पर
+const ADSTERRA_BANNER_320x50_KEY = "bb590076f5633ff07d0ff33fe5b3ae4b";
+// 4) Banner 728x90 (Zone ID: 30574827) — Sticky Bottom Banner पर
+const ADSTERRA_BANNER_728x90_KEY = "4754dd1a282721a1979ab9139c7a35da";
+// 5) Smart Link (Zone ID: 30574828) — Tabs के नीचे एक क्लिक करने योग्य "Sponsored" लिंक की तरह
+const ADSTERRA_SMARTLINK_URL = "https://consciousdunkvastly.com/x7f1223r?key=acb43fd8720e1a807ea43ae0d7f3ee5d";
+// 6) Social Bar (Zone ID: 30574829) — पूरे ऐप में एक बार जुड़ने वाला अपना-आप तैरता (floating) बार
+const ADSTERRA_SOCIALBAR_SCRIPT_HTML = `<script src="https://consciousdunkvastly.com/fe/ed/4f/feed4f649c7f66d448e281e7764edbe7.js"><\/script>`;
+
+// ---- <script> टैग असल में execute हो, इसके लिए DOM से दोबारा बनाकर जोड़ने वाला हेल्पर ----
+// नोट: क्लोज़िंग script टैग जानबूझकर बैकस्लैश के साथ (<\/script>) लिखा गया है — वरना ब्राउज़र
+// इस पूरी .html फ़ाइल के असली <script type="module"> टैग को यहीं (बीच में) गलती से बंद मान लेता।
+function injectAdMarkup(container, htmlString){
+  if(!container) return;
+  container.innerHTML = htmlString; // पहले सामान्य तरीके से DOM बना लेते हैं (Script अभी निष्क्रिय)
+  Array.from(container.querySelectorAll("script")).forEach(oldScript => {
+    const s = document.createElement("script");
+    Array.from(oldScript.attributes).forEach(attr => s.setAttribute(attr.name, attr.value));
+    if(oldScript.textContent) s.textContent = oldScript.textContent;
+    if(!oldScript.hasAttribute("async")) s.async = false;
+    oldScript.parentNode.replaceChild(s, oldScript);
+  });
+}
+
+// ---- atOptions वाले Banner (320x50 / 728x90) को isolated <iframe> में दिखाना ----
+// यह तरीका इस्तेमाल करने से एक ही कोड को कई जगह बिना टकराव के दोहराया जा सकता है,
+// क्योंकि हर <iframe> का अपना अलग "atOptions" स्कोप होता है।
+function renderAtOptionsBannerIframe(container, key, width, height){
+  if(!container) return;
+  const html = `<html><body style="margin:0;padding:0;overflow:hidden;">`
+    + `<script>atOptions=${JSON.stringify({key, format:"iframe", height, width, params:{}})};<\/script>`
+    + `<script src="https://consciousdunkvastly.com/${key}/invoke.js"><\/script>`
+    + `</body></html>`;
+  const iframe = document.createElement("iframe");
+  iframe.srcdoc = html;
+  iframe.width = String(width);
+  iframe.height = String(height);
+  iframe.style.border = "0";
+  iframe.style.maxWidth = "100%";
+  iframe.scrolling = "no";
+  container.innerHTML = "";
+  container.appendChild(iframe);
+}
+
+// ---- सभी Ad Slots को पेज लोड होते ही उनकी जगह पर भरना ----
+(function initExtraAdSlots(){
+  // Native/In-content Banner — Result Top स्लॉट पर (fixed-id वाला <div> पेज पर सिर्फ एक ही बार होना चाहिए)
+  const resultTop = document.getElementById("adSlotResultTop");
+  if(resultTop) injectAdMarkup(resultTop, ADSTERRA_NATIVE_AD_HTML);
+
+  // 320x50 Banner — Login व दोनों Result Bottom स्लॉट्स पर (iframe-safe, दोहराया जा सकता है)
+  ["adSlotLogin", "adSlotTestResultBottom", "adSlotMarksheetResultBottom"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) renderAtOptionsBannerIframe(el, ADSTERRA_BANNER_320x50_KEY, 320, 50);
+  });
+
+  // 728x90 Banner — Sticky Bottom Bar पर
+  const sticky = document.getElementById("stickyAdBar");
+  if(sticky) renderAtOptionsBannerIframe(sticky, ADSTERRA_BANNER_728x90_KEY, 728, 90);
+
+  // Smart Link — Tabs के नीचे एक साधारण क्लिक करने योग्य लिंक की तरह
+  const smartLinkEl = document.getElementById("adSlotSmartLink");
+  if(smartLinkEl){
+    smartLinkEl.innerHTML = `<a href="${ADSTERRA_SMARTLINK_URL}" target="_blank" rel="noopener sponsored"
+      style="display:block;padding:10px;text-decoration:none;color:var(--primary-dark);font-weight:600;text-align:center;">
+      📢 Sponsored — देखने के लिए यहाँ टैप करें</a>`;
+  }
+
+  document.querySelectorAll(".psb-ad-slot").forEach(el => {
+    const label = document.createElement("div");
+    label.className = "psb-ad-label";
+    label.textContent = "Advertisement";
+    el.appendChild(label);
+  });
+})();
+
+// ---- Sticky Bar और Social Bar सिर्फ तब दिखें जब mainWrap (Login हो चुका, App Blocked न हो) खुला हो ----
+let socialBarInjected = false;
+function refreshAdVisibility(){
+  const showMain = studentAppEnabled && !!currentUser;
+  const sticky = document.getElementById("stickyAdBar");
+  if(sticky) sticky.classList.toggle("hidden", !showMain);
+  // Social Bar सिर्फ Login हो जाने के बाद ही जुड़े — Login स्क्रीन पर "Google से Login करें"
+  // बटन की क्लिक किसी तैरते हुए Ad Widget से बीच में रुकनी (hijack होनी) नहीं चाहिए।
+  refreshSocialBar(!showMain);
+}
+refreshAdVisibility(); // शुरुआती स्थिति (Login से पहले Social Bar नहीं जुड़ेगा)
+
+// ---- Social Bar — पूरे ऐप में एक बार जुड़ने वाला फ़्लोटिंग बार ----
+function refreshSocialBar(hide){
+  let wrap = document.getElementById("psbSocialBarSlot");
+  if(hide){
+    if(wrap) wrap.remove();
+    socialBarInjected = false;
+    return;
+  }
+  if(!socialBarInjected){
+    wrap = document.createElement("div");
+    wrap.id = "psbSocialBarSlot";
+    wrap.style.display = "none"; // यह खुद खाली/अदृश्य है; असली widget खुद body में तैरने लगेगा
+    document.body.appendChild(wrap);
+    injectAdMarkup(wrap, ADSTERRA_SOCIALBAR_SCRIPT_HTML);
+    socialBarInjected = true;
+  }
+}
+
+// ---- Popunder/Interstitial ट्रिगर फ़ंक्शन ----
+// जब भी Student "Result देखें" या "Print" दबाए — यह फ़ंक्शन कॉल होता है।
+function triggerPopunderAd(){
+  try{
+    const old = document.getElementById("psbPopunderScriptSlot");
+    if(old) old.remove();
+    const wrap = document.createElement("div");
+    wrap.id = "psbPopunderScriptSlot";
+    wrap.style.display = "none";
+    document.body.appendChild(wrap);
+    injectAdMarkup(wrap, ADSTERRA_POPUNDER_SCRIPT_HTML);
+  }catch(err){ console.warn("Popunder ad trigger नहीं हो पाया:", err.message); }
+}
+
+window.switchTab = function(tab){
+  document.getElementById("tabTest").classList.toggle("active", tab === "test");
+  document.getElementById("tabPaper").classList.toggle("active", tab === "paper");
+  document.getElementById("tabNotices").classList.toggle("active", tab === "notices");
+  document.getElementById("panelTest").classList.toggle("hidden", tab !== "test");
+  document.getElementById("panelPaper").classList.toggle("hidden", tab !== "paper");
+  document.getElementById("panelNotices").classList.toggle("hidden", tab !== "notices");
+  if(tab === "notices") renderStudentNoticesTab();
+};
+
+/* =====================================================================
+   महत्वपूर्ण सूचना (Notices) — Teacher App से अलग Firestore Collection
+   "studentAnnouncements" इस्तेमाल होता है ताकि Admin App में दोनों के लिए
+   अलग-अलग Add/Edit का Option हो (जैसा माँगा गया था)।
+   हर Document: { title, message, link, linkButtonText, active, createdAt }
+   ===================================================================== */
+let currentStudentAnnouncements = [];
+onSnapshot(
+  query(collection(db, "studentAnnouncements"), orderBy("createdAt", "desc")),
+  (snap) => {
+    currentStudentAnnouncements = [];
+    snap.forEach(d => {
+      const a = d.data();
+      if(a.active === false) return;
+      currentStudentAnnouncements.push(a);
+    });
+    const badge = document.getElementById("studentNoticesCountBadge");
+    if(badge){
+      if(currentStudentAnnouncements.length){ badge.textContent = currentStudentAnnouncements.length; badge.classList.remove("hidden"); }
+      else badge.classList.add("hidden");
+    }
+    renderStudentNoticesTab();
+  },
+  (err) => console.warn("studentAnnouncements sync error:", err.message)
+);
+
+function renderStudentNoticesTab(){
+  const wrap = document.getElementById("studentNoticesListWrap");
+  if(!wrap) return;
+  if(currentStudentAnnouncements.length === 0){
+    wrap.innerHTML = '<p style="color:#8892a0;text-align:center;margin-top:20px;">अभी तक कोई सूचना नहीं है।</p>';
+    return;
+  }
+  wrap.innerHTML = currentStudentAnnouncements.map(a => `
+    <div class="notice-card">
+      <h4>📢 ${escapeHtml(a.title || "सूचना")}</h4>
+      ${a.message ? `<p>${escapeHtml(a.message)}</p>` : ""}
+      ${a.link ? `<a class="btn btn-outline btn-sm" href="${escapeAttr(a.link)}" target="_blank" rel="noopener">${escapeHtml(a.linkButtonText || "लिंक खोलें")} ↗</a>` : ""}
+      <div class="notice-date">${formatDate(a.createdAt)}</div>
+    </div>
+  `).join("") + `<div id="adSlotStudentNotices" class="psb-ad-slot psb-ad-slot-infeed"></div>`;
+  const adBox = document.getElementById("adSlotStudentNotices");
+  if(adBox) injectAdMarkup(adBox, ADSTERRA_NATIVE_AD_HTML);
+}
+
+/* ===================== TEST RESULT CHECK ===================== */
+let lastTestResults = [];
+
+window.searchTestResults = async function(){
+  triggerPopunderAd();
+  const regNo = document.getElementById("trqRegNo").value.trim();
+  const cls = document.getElementById("trqClass").value.trim();
+  const section = document.getElementById("trqSection").value.trim();
+  const msgBox = document.getElementById("trqMsg");
+  const resultCard = document.getElementById("trqResultCard");
+  resultCard.classList.add("hidden");
+  msgBox.innerHTML = "";
+  lastTestResults = [];
+
+  if(!regNo || !cls || !section){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया Registration Number, Class और Section भरें</div>';
+    return;
+  }
+  if(!verifyRecaptcha(testResultRecaptchaWidgetId)){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया "I\'m not a robot" पर टिक करें</div>';
+    return;
+  }
+
+  try{
+    const q = query(
+      collection(db, "testResults"),
+      where("teacherRegNo", "==", regNo),
+      where("class", "==", cls)
+    );
+    const snap = await getDocs(q);
+    const found = [];
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      if((data.section||"").toLowerCase() === section.toLowerCase() && data.public === true){
+        found.push({ id: docSnap.id, ...data });
+      }
+    });
+
+    if(found.length > 0){
+      lastTestResults = found;
+      renderTestResultList(found);
+      resultCard.classList.remove("hidden");
+    } else {
+      msgBox.innerHTML = '<div class="msg msg-error">Result Not Found.</div>';
+    }
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  } finally {
+    resetRecaptcha(testResultRecaptchaWidgetId);
+  }
+};
+
+function renderTestResultList(list){
+  const wrap = document.getElementById("trqResultWrap");
+  wrap.innerHTML = `<table class="list-table"><tr><th>Name</th><th>Roll No</th><th>Total</th><th>%</th><th>Result</th><th>Action</th></tr>` +
+    list.map((r, idx) => `<tr>
+      <td>${escapeHtml(r.studentName)}</td>
+      <td>${escapeHtml(r.rollNo||"-")}</td>
+      <td>${r.totalObtained}/${r.totalMax}</td>
+      <td>${r.percentage}%</td>
+      <td><span class="badge ${r.result==='Pass'?'badge-pass':'badge-fail'}">${r.result}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="printTestResultRow(${idx})">🖨 Print</button>
+        <button class="btn btn-outline btn-sm" onclick="shareTestResultRow(${idx})">📤 Share</button>
+      </td>
+    </tr>`).join("") + `</table>`;
+}
+
+window.printTestResultRow = function(idx){
+  triggerPopunderAd();
+  const r = lastTestResults[idx];
+  if(!r) return;
+  document.getElementById("printArea").innerHTML = testResultPrintHtml(r);
+  window.print();
+};
+
+window.shareTestResultRow = async function(idx){
+  const r = lastTestResults[idx];
+  if(!r) return;
+  await sharePdfOrDownload(testResultPrintHtml(r), "TestResult_" + (r.studentName||"Student"), "Test Result");
+};
+
+/* ---- असली PDF बनाकर Share करना (सिर्फ Print नहीं) — teacher-app.html जैसा ही तरीका ---- */
+async function generatePdfBlob(html, filename){
+  const holder = document.createElement("div");
+  holder.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;background:#fff;";
+  holder.innerHTML = html;
+  document.body.appendChild(holder);
+  await new Promise(r => setTimeout(r, 80));
+  try{
+    return await html2pdf().set({
+      margin: 6,
+      filename: filename,
+      image: { type: "jpeg", quality: 0.97 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] }
+    }).from(holder).outputPdf("blob");
+  } finally {
+    document.body.removeChild(holder);
+  }
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function sharePdfOrDownload(html, filenameBase, shareTitle){
+  const filename = (filenameBase || "Result").replace(/[^a-zA-Z0-9\u0900-\u097F _-]/g, "").trim() + ".pdf";
+  try{
+    const blob = await generatePdfBlob(html, filename);
+    const file = new File([blob], filename, { type: "application/pdf" });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: shareTitle || filenameBase, text: shareTitle || filenameBase });
+    } else if(navigator.share){
+      await navigator.share({ title: shareTitle || filenameBase });
+      downloadBlob(blob, filename);
+    } else {
+      downloadBlob(blob, filename);
+      alert("इस डिवाइस पर सीधा Share उपलब्ध नहीं है — PDF Download कर दी गई है, वहाँ से Share कर सकते हैं।");
+    }
+  }catch(err){
+    if(err && err.name === "AbortError") return;
+    console.warn("PDF share error:", err && err.message);
+    alert("PDF बनाने/शेयर करने में समस्या आई। कृपया दोबारा कोशिश करें।");
+  }
+}
+
+function watermarkHtml(text){
+  if(!text) return "";
+  return `<div class="print-watermark">${escapeHtml(text)}</div>`;
+}
+
+function testResultPrintHtml(r){
+  let subjRows = r.subjects.map(s => `<tr><td>${escapeHtml(s.name)}</td><td>${s.max}</td><td>${s.obtained}</td></tr>`).join("");
+  return `
+    <div class="print-sheet">
+      ${watermarkHtml(r.watermark)}
+      <div class="print-header-band">
+        <div><b>${escapeHtml(r.instituteName||"")}</b>${r.diseCode ? " (DISE: " + escapeHtml(r.diseCode) + ")" : ""}</div>
+        <div>Reg No: ${escapeHtml(r.teacherRegNo||"")}</div>
+      </div>
+      <h2>${escapeHtml(r.instituteName||"")}</h2>
+      <div class="sub">Test Result - ${escapeHtml(r.examType || "")}</div>
+      <div class="print-details">
+        <div><b>Student Name:</b> ${escapeHtml(r.studentName)}</div>
+        <div><b>Roll No.:</b> ${escapeHtml(r.rollNo)}</div>
+        <div><b>Father's Name:</b> ${escapeHtml(r.fatherName)}</div>
+        <div><b>Class:</b> ${escapeHtml(r.class)} &nbsp; <b>Section:</b> ${escapeHtml(r.section)}</div>
+      </div>
+      <table>
+        <tr><th>Subject</th><th>Max Marks</th><th>Obtained Marks</th></tr>
+        ${subjRows}
+        <tr><td><b>Total</b></td><td><b>${r.totalMax}</b></td><td><b>${r.totalObtained}</b></td></tr>
+      </table>
+      <p style="margin-top:10px;"><b>Percentage:</b> ${r.percentage}% &nbsp; | &nbsp; <b>Pass Percentage:</b> ${r.passPercentage}%</p>
+      <div class="result-badge ${r.result === "Pass" ? "result-pass" : "result-fail"}">Result: ${r.result}</div>
+      <div class="sign-row"><div>Class Teacher Signature</div><div>Principal Signature</div></div>
+      <div class="print-footer-band">Teacher: ${escapeHtml(r.teacherName||"")} &nbsp;|&nbsp; Mobile: ${escapeHtml(r.mobile||"")} &nbsp;|&nbsp; Address: ${escapeHtml(r.address||"")}</div>
+    </div>
+  `;
+}
+
+/* ===================== MARKSHEET / PAPER RESULT CHECK ===================== */
+let lastMarksheet = null;
+
+window.searchMarksheet = async function(){
+  triggerPopunderAd();
+  const regNo = document.getElementById("rcRegNo").value.trim();
+  const rollNo = document.getElementById("rcRollNo").value.trim();
+  const cls = document.getElementById("rcClass").value.trim();
+  const msgBox = document.getElementById("rcMsg");
+  const resultCard = document.getElementById("rcResultCard");
+  resultCard.classList.add("hidden");
+  msgBox.innerHTML = "";
+  lastMarksheet = null;
+
+  if(!regNo || !rollNo || !cls){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया Registration Number, Roll No और Class भरें</div>';
+    return;
+  }
+  if(!verifyRecaptcha(marksheetRecaptchaWidgetId)){
+    msgBox.innerHTML = '<div class="msg msg-error">कृपया "I\'m not a robot" पर टिक करें</div>';
+    return;
+  }
+
+  try{
+    const q = query(
+      collection(db, "marksheets"),
+      where("registrationNumber", "==", regNo),
+      where("rollNo", "==", rollNo)
+    );
+    const snap = await getDocs(q);
+    let found = null;
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      if((data.class||"").toLowerCase() === cls.toLowerCase()){
+        found = data;
+      }
+    });
+
+    if(found){
+      lastMarksheet = found;
+      document.getElementById("rcResultContent").innerHTML = marksheetHtml(found);
+      resultCard.classList.remove("hidden");
+    } else {
+      msgBox.innerHTML = '<div class="msg msg-error">Result Not Found.</div>';
+    }
+  }catch(err){
+    msgBox.innerHTML = '<div class="msg msg-error">Error: ' + err.message + '</div>';
+  } finally {
+    resetRecaptcha(marksheetRecaptchaWidgetId);
+  }
+};
+
+window.printMarksheetResult = function(){
+  triggerPopunderAd();
+  if(!lastMarksheet) return;
+  document.getElementById("printArea").innerHTML = marksheetHtml(lastMarksheet);
+  window.print();
+};
+
+window.shareMarksheetResult = async function(){
+  if(!lastMarksheet) return;
+  await sharePdfOrDownload(marksheetHtml(lastMarksheet), "Marksheet_" + (lastMarksheet.studentName||"Student"), "Mark Sheet Result");
+};
+
+function marksheetHtml(d){
+  let subjRows = d.subjects.map(s => `<tr><td>${escapeHtml(s.name)}</td><td>${s.max}</td><td>${s.obtained}</td></tr>`).join("");
+  return `
+    <div class="print-sheet">
+      ${watermarkHtml(d.watermark)}
+      <div class="print-header-band">
+        <div><b>${escapeHtml(d.schoolName || "School Name")}</b>${d.discCode ? " (DISE: " + escapeHtml(d.discCode) + ")" : ""}</div>
+        <div>Reg No: ${escapeHtml(d.registrationNumber||"")}</div>
+      </div>
+      <h2>${escapeHtml(d.schoolName || "School Name")}</h2>
+      <div class="sub">Mark Sheet - ${escapeHtml(d.examType || "")}</div>
+      <div class="print-details">
+        <div><b>Student Name:</b> ${escapeHtml(d.studentName)}</div>
+        <div><b>Roll No.:</b> ${escapeHtml(d.rollNo)}</div>
+        <div><b>Father's Name:</b> ${escapeHtml(d.fatherName)}</div>
+        <div><b>Class:</b> ${escapeHtml(d.class)}</div>
+        ${d.motherName ? `<div><b>Mother's Name:</b> ${escapeHtml(d.motherName)}</div>` : ""}
+        ${d.discCode ? `<div><b>Disc Code:</b> ${escapeHtml(d.discCode)}</div>` : ""}
+      </div>
+      <table>
+        <tr><th>Subject</th><th>Max Marks</th><th>Obtained Marks</th></tr>
+        ${subjRows}
+        <tr><td><b>Total</b></td><td><b>${d.totalMax}</b></td><td><b>${d.totalObtained}</b></td></tr>
+      </table>
+      <p style="margin-top:10px;"><b>Percentage:</b> ${d.percentage}% &nbsp; | &nbsp; <b>Pass Percentage:</b> ${d.passPercentage}%</p>
+      ${d.remarks ? `<p><b>Remarks:</b> ${escapeHtml(d.remarks)}</p>` : ""}
+      <div class="result-badge ${d.result === "Pass" ? "result-pass" : "result-fail"}">Result: ${d.result}</div>
+      <div class="sign-row"><div>Class Teacher Signature</div><div>Principal Signature</div></div>
+      <div class="print-footer-band">Teacher: ${escapeHtml(d.teacherName||"")} &nbsp;|&nbsp; Mobile: ${escapeHtml(d.teacherMobile||"")} &nbsp;|&nbsp; Address: ${escapeHtml(d.teacherAddress||"")}</div>
+    </div>
+  `;
+}
+
+function escapeHtml(str){ if(!str) return ""; return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function escapeAttr(str){ return escapeHtml(str).replace(/"/g,"&quot;"); }
+function formatDate(iso){
+  if(!iso) return "-";
+  const d = new Date(iso);
+  return d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+</script>
+</body>
+</html>
